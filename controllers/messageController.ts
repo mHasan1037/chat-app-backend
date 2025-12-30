@@ -1,3 +1,4 @@
+import { getIO } from "../utils/socket";
 import { Response } from "express";
 import Conversation from "../models/Conversation";
 import Message from "../models/Message";
@@ -21,6 +22,8 @@ export const sendMessage = async (req: any, res: Response) => {
       lastMessage: message._id,
       updatedAt: Date.now(),
     });
+
+    getIO().to(conversationId).emit('newMessage', message);
 
     return res.status(201).json(message);
   } catch (err: any) {
