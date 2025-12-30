@@ -1,5 +1,6 @@
 import { Response } from "express";
 import Conversation from "../models/Conversation";
+import { getIO } from "../utils/socket";
 
 export const createOrGetConversation = async (req: any, res: Response) => {
    try{
@@ -20,9 +21,22 @@ export const createOrGetConversation = async (req: any, res: Response) => {
                isGroup: false,
                members: [userId, recipientId]
             });
-         }
+         };
 
-         return res.json(conversation);
+         const populatedConversation = await Conversation.findById(conversation._id)
+             .populate("members", "name email")
+             .populate("lastMessage");
+
+         const io = getIO();
+
+         populatedConversation!.members.forEach((member: any) =>{
+           io.to(`user:${member._id}`).emit(
+             "conversationUpdated",
+             populatedConversation
+           )
+         });
+
+         return res.json(populatedConversation);
    }catch(err: any){
        return res.status(500).json({ message: err.message });
    }

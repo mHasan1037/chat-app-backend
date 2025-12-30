@@ -23,7 +23,27 @@ export const sendMessage = async (req: any, res: Response) => {
       updatedAt: Date.now(),
     });
 
-    getIO().to(conversationId).emit('newMessage', message);
+    const updatedConversation = await Conversation.findById(conversationId)
+      .populate("members", "name email")
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "name email" },
+      });
+
+    if (!updatedConversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    const io = getIO();
+
+    io.to(conversationId).emit("newMessage", message);
+
+    updatedConversation.members.forEach((member: any) => {
+      io.to(`user:${member._id}`).emit(
+        "conversationUpdated",
+        updatedConversation
+      );
+    });
 
     return res.status(201).json(message);
   } catch (err: any) {

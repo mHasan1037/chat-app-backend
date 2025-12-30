@@ -23,6 +23,10 @@ export const initSocket = (server: HTTPServer) =>{
     });
 
     io.on("connection", (socket) =>{
+        socket.on('joinUser', (userId: string) =>{
+           socket.join(`user:${userId}`);
+        });
+
         socket.on("joinConversation", (conversationId: string) => {
             socket.join(conversationId);
         })
