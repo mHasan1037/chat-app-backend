@@ -8,11 +8,11 @@ export const initSocket = (server: HTTPServer) =>{
         cors: {
             origin: (origin, callback) =>{
                 const allowedOrigins = [
-                    "http://localhost:3000",
-                    process.env.FRONTEND_URL
+                    "https://chat-app-frontend-eight-woad.vercel.app/",
+                    process.env.FRONTEND_URL?.replace(/\/$/, "")
                 ];
 
-                if(!origin || allowedOrigins.includes(origin)){
+                if(!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))){
                     callback(null, true);
                 }else{
                     callback(new Error("Not allowed by CORS"))
