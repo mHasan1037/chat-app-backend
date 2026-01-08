@@ -55,4 +55,23 @@ export const getConverSations = async (req: any, res: Response) =>{
     }catch(err: any){
         return res.status(500).json({ message: err.message });
     }
+};
+
+export const getConverSationById = async (req: any, res: Response) =>{
+   const userId = req.user._id;
+   const {id} = req.params;
+
+   const conversation = await Conversation.findById(id)
+      .populate("members", "name")
+      .populate("lastMessage");
+
+   if(!conversation){
+      return res.status(404).json({message: "Conversation is not found"})
+   };
+
+   if(!conversation.members.some((m: any) => m._id.toString() === userId.toString())){
+     return res.status(403).json({message: 'Not allowed'})
+   };
+
+   res.json(conversation);
 }
