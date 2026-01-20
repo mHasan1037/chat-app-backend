@@ -18,7 +18,7 @@ export const protectedRoute = async (req: any, res: Response, next: NextFunction
            console.log("Decoded token:", decoded);
 
            const user = await User.findById(decoded.id).select('-password');
-           console.log("User from DB:", user);
+           console.log("User from DBB:", user);
 
             if (!user) {
                 return res.status(401).json({ message: "User not found" });
