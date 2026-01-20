@@ -62,7 +62,7 @@ export const getConverSationById = async (req: any, res: Response) =>{
    const {id} = req.params;
 
    const conversation = await Conversation.findById(id)
-      .populate("members", "name")
+      .populate("members", "_id name email")
       .populate("lastMessage");
 
    if(!conversation){
