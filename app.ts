@@ -9,6 +9,7 @@ import userRoutes from "./routes/userRoutes";
 import chatRoutes from './routes/chatRoutes';
 import messageRoutes from './routes/messageRoutes';
 import postRoutes from './routes/postRoutes';
+import likeRoutes from './routes/likeRoutes';
 
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/likes', likeRoutes);
 
 export default app;
 
