@@ -1,6 +1,7 @@
 import { Response } from "express";
 import Post from "../models/Post";
 import User from "../models/User";
+import Like from "../models/Like";
 
 export const createPost = async (req: any, res: Response) => {
   try {
@@ -71,7 +72,7 @@ export const getFeedPosts = async (req: any, res: Response) => {
     const cursor = req.query.cursor;
     const userId = req.user._id;
 
-    const user = await User.findById(userId).select('friends');
+    const user = await User.findById(userId).select("friends");
     const friendsIds = user?.friends || [];
 
     const filter: any = {
@@ -79,7 +80,7 @@ export const getFeedPosts = async (req: any, res: Response) => {
       $or: [
         { visibility: "public" },
         { author: userId },
-        { visibility: "friends", author: {$in: friendsIds} },
+        { visibility: "friends", author: { $in: friendsIds } },
       ],
     };
 
@@ -95,9 +96,25 @@ export const getFeedPosts = async (req: any, res: Response) => {
     const hasNextPage = posts.length > limit;
     if (hasNextPage) posts.pop();
 
+    const postIds = posts.map((p) => p._id);
+
+    const likes = await Like.find({
+      user: userId,
+      post: { $in: postIds },
+    }).select("post");
+
+    const likedPostIds = new Set(likes.map((l) => l.post.toString()));
+
+    const postsWithLikeState = posts.map((post) => ({
+      ...post.toObject(),
+      likedByMe: likedPostIds.has(String(post._id)),
+    }));
+
     res.json({
-      posts,
-      nextCursor: posts.length ? posts[posts.length - 1].createdAt : null,
+      posts: postsWithLikeState,
+      nextCursor: postsWithLikeState.length
+        ? postsWithLikeState[postsWithLikeState.length - 1].createdAt
+        : null,
       hasNextPage,
     });
   } catch (err: any) {
