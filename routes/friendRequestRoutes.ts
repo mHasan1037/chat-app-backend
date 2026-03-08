@@ -17,5 +17,6 @@ router.patch("/accept/:id", protectedRoute, acceptFriendRequest);
 router.patch("/decline/:id", protectedRoute, declineFriendRequest);
 router.patch("/cancel/:id", protectedRoute, cancelFriendRequest);
 router.get("/", protectedRoute, getFriendsList);
+router.get("/:id/friends", protectedRoute, getFriendsList);
 
 export default router;

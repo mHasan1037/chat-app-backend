@@ -113,11 +113,16 @@ export const declineFriendRequest = async (req: any, res: Response) =>{
 
 export const getFriendsList = async (req: any, res: Response) =>{
     try{
-        const userId = req.user._id;
+        const userId = req.params.id || req.user._id;
         const user = await User.findById(userId).populate(
             'friends',
             'name email'
         );
+
+        if(!user){
+           return res.status(404).json({message: "User not found"})
+        };
+
         return res.json(user?.friends || []);
     }catch(err: any){
         return res.status(500).json({message: err.message});
