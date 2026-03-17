@@ -77,7 +77,7 @@ export const getUserProfile = async (req: any, res: Response) => {
 
     const targetUserId = paramId === "me" ? loggedInUserId : paramId;
     const user = await User.findById(targetUserId)
-      .select("_id name email phone friends profilePicture")
+      .select("_id name email phone friends profilePicture allProfilePictures")
       .lean();
 
     if (!user) {
@@ -117,6 +117,7 @@ export const getUserProfile = async (req: any, res: Response) => {
       phone: user.phone,
       friends: user.friends,
       profilePicture: user.profilePicture,
+      allProfilePictures: user.allProfilePictures,
       isMe,
       isFriend,
       isIncomingRequest,
