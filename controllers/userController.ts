@@ -202,6 +202,11 @@ export const updateProfilePicture = async (req: any, res: Response) => {
 
     user.profilePicture = url;
     user.profilePicturePublicId = public_id;
+    user.allProfilePictures.push({
+      url,
+      public_id,
+      uploadAt: new Date()
+    })
 
     await user.save();
 
