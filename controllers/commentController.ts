@@ -86,4 +86,32 @@ export const deleteComment = async (req: any, res: Response) =>{
   }catch(err: any){
     res.status(500).json({message: err.message});
   }
+};
+
+export const editComment = async(req: any, res: Response) =>{
+  try{
+     const {commentId} = req.params;
+     const {content} = req.body;
+
+     if(!content?.trim()){
+       return res.status(400).json({message: "Content is required"})
+     };
+
+     const comment = await Comment.findById(commentId);
+
+     if(!comment || comment.isDeleted){
+      return res.status(404).json({message: "Comment not found"})
+     };
+
+     if(comment.author.toString() !== req.user._id.toString()){
+       return res.status(403).json({message: "Not authorized"})
+     };
+
+     comment.content = content;
+     await comment.save();
+
+     res.status(200).json(comment);
+  }catch(err: any){
+     res.status(500).json({message: err.message})
+  }
 }
