@@ -6,6 +6,7 @@ import {
   updateMyProfile,
   unfriendUser,
   updateProfilePicture,
+  deleteProfilePicture
 } from "../controllers/userController";
 
 const router = express.Router();
@@ -19,5 +20,6 @@ router.patch(
   updateProfilePicture,
 );
 router.get("/:id", protectedRoute, getUserProfile);
+router.delete('/profile-picture/:public_id', protectedRoute, deleteProfilePicture);
 
 export default router;
