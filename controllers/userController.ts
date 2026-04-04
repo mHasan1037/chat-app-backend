@@ -269,4 +269,43 @@ export const deleteProfilePicture = async (req: any, res: Response) =>{
       console.error("Delete error:", err);
       return res.status(500).json({message: err.message});
    }
+};
+
+
+export const setActiveProfilePicture = async (req: any, res: Response) =>{
+  try{
+     const userId = req.user._id;
+     const {public_id} = req.body;
+
+     if(!public_id){
+       return res.status(400).json({message: "public_id is required"})
+     };
+
+     const user = await User.findById(userId);
+     if(!user){
+       return res.status(404).json({message: 'User not found'});
+     };
+
+     const imageExist = user.allProfilePictures.find(
+       (img) => img.public_id === public_id
+     );
+
+     if(!imageExist){
+      return res.status(404).json({message: 'Image not found in your gallery'});
+     };
+
+     user.profilePicture = imageExist.url;
+     user.profilePicturePublicId = imageExist.public_id;
+
+     await user.save();
+
+     return res.json({
+       message: 'Profile picture updated successfully',
+       user
+     })
+  }catch(err: any){
+     console.error('Set active error:', err);
+     return res.status(500).json({message: err.message});
+  }
 }
+

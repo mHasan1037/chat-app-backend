@@ -6,7 +6,8 @@ import {
   updateMyProfile,
   unfriendUser,
   updateProfilePicture,
-  deleteProfilePicture
+  deleteProfilePicture,
+  setActiveProfilePicture
 } from "../controllers/userController";
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.patch(
 );
 router.get("/:id", protectedRoute, getUserProfile);
 router.delete('/profile-picture/:public_id', protectedRoute, deleteProfilePicture);
+router.patch('/set-active-profile-picture', protectedRoute, setActiveProfilePicture)
 
 export default router;
