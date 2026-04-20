@@ -226,6 +226,7 @@ export const deleteProfilePicture = async (req: any, res: Response) =>{
    try{
       const userId = req.user._id;
       const { public_id } = req.params;
+      const decodedPublicId = decodeURIComponent(public_id);
 
       const user = await User.findById(userId);
 
@@ -241,10 +242,10 @@ export const deleteProfilePicture = async (req: any, res: Response) =>{
         return res.status(404).json({message: "Image not found"});
       };
 
-      await cloudinary.uploader.destroy(public_id);
+      await cloudinary.uploader.destroy(decodedPublicId);
 
       user.allProfilePictures = user.allProfilePictures.filter(
-        (img) => img.public_id !== public_id
+        (img) => img.public_id !== decodedPublicId
       );
 
       if(user.profilePicturePublicId === public_id){
