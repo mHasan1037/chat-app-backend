@@ -10,6 +10,7 @@ import messageRoutes from './routes/messageRoutes';
 import postRoutes from './routes/postRoutes';
 import likeRoutes from './routes/likeRoutes';
 import commentRoutes from './routes/commentRoutes';
+import aiRoute from './routes/aiRoutes';
 
 
 
@@ -37,6 +38,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/likes', likeRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/ai', aiRoute);
 
 export default app;
 
