@@ -56,7 +56,7 @@ export const getMessages = async (req: any, res: Response) => {
     const { conversationId } = req.params;
 
     const messages = await Message.find({ conversation: conversationId })
-      .populate("sender", "name email")
+      .populate("sender", "name email profilePicture")
       .sort({ createdAt: 1 });
 
     return res.json(messages);

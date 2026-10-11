@@ -45,7 +45,7 @@ export const getCommentsByPost = async (req: any, res: Response) => {
     const comments = await Comment.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit + 1)
-      .populate("author", "name");
+      .populate("author", "name profilePicture");
 
     const hasNextPage = comments.length > limit;
     if (hasNextPage) comments.pop();
