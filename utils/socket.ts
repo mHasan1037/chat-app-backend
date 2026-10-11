@@ -8,7 +8,7 @@ export const initSocket = (server: HTTPServer) =>{
         cors: {
             origin: (origin, callback) =>{
                 const allowedOrigins = [
-                    "https://chat-app-frontend-eight-woad.vercel.app/",
+                    "https://chat-app-frontend-eight-woad.vercel.app",
                     process.env.FRONTEND_URL?.replace(/\/$/, "")
                 ];
 
