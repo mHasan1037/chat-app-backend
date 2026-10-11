@@ -51,7 +51,7 @@ export const getUserPosts = async (req: any, res: Response) => {
     const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit + 1)
-      .populate("author", "name");
+      .populate("author", "name profilePicture");
 
     const hasNextPage = posts.length > limit;
     if (hasNextPage) posts.pop();
