@@ -47,7 +47,7 @@ export const getConverSations = async (req: any, res: Response) =>{
         const userId = req.user._id;
 
         const conversations = await Conversation.find({ members: userId })
-        .populate("members", "name email")
+        .populate("members", "name email profilePicture")
         .populate("lastMessage")
         .sort({ updatedAt: -1 });   
 

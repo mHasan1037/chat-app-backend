@@ -19,7 +19,7 @@ export const searchUsers = async (req: any, res: Response) => {
         { phone: new RegExp(query, "i") },
       ],
     })
-      .select("_id name email phone friends")
+      .select("_id name email phone friends profilePicture")
       .lean();
 
     const loggedInUser = await User.findById(loggedInUserId).select("friends");
@@ -57,6 +57,7 @@ export const searchUsers = async (req: any, res: Response) => {
           _id: u._id,
           name: u.name,
           email: u.email,
+          profilePicture: u.profilePicture,
           isFriend: friendIds?.includes(id),
           isIncomingRequest: incomingIds.includes(id),
           isOutgoingRequest: outgoingIds.includes(id),
