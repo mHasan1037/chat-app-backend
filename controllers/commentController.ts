@@ -33,6 +33,14 @@ export const getCommentsByPost = async (req: any, res: Response) => {
     const limit = Math.min(Number(req.query.limit) || 10, 50);
     const cursor = req.query.cursor;
 
+    const post = await Post.findOne({ _id: postId, isDeleted: false })
+      .select("author")
+      .lean();
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
     const filter: any = {
       post: postId,
       isDeleted: false,
@@ -52,6 +60,7 @@ export const getCommentsByPost = async (req: any, res: Response) => {
 
     res.json({
       comments,
+      postOwnerId: post.author.toString(),
       nextCursor: comments.length
         ? comments[comments.length - 1].createdAt
         : null,
@@ -71,9 +80,19 @@ export const deleteComment = async (req: any, res: Response) =>{
       return res.status(404).json({message: 'Comment not found'});
     };
 
-    if(comment.author.toString() !== req.user._id.toString()){
-      return res.status(403).json({message: "Not authorized"})
-    };
+    const post = await Post.findById(comment.post).select("author");
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const userId = req.user._id.toString();
+    const isCommentAuthor = comment.author.toString() === userId;
+    const isPostOwner = post.author.toString() === userId;
+
+
+    if (!isCommentAuthor && !isPostOwner) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
 
     comment.isDeleted = true;
     await comment.save();
