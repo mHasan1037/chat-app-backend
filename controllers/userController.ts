@@ -5,21 +5,23 @@ import cloudinary from "../utils/cloudinary";
 
 export const searchUsers = async (req: any, res: Response) => {
   try {
-    const query = req.query.query?.trim();
+    const rawQuery = req.query.query;
+    const query = typeof rawQuery === "string" ? rawQuery.trim() : "";
     const loggedInUserId = req.user._id.toString();
 
     if (!query) {
       return res.json([]);
     }
 
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "i");
+
     const users = await User.find({
-      $or: [
-        { name: new RegExp(query, "i") },
-        { email: new RegExp(query, "i") },
-        { phone: new RegExp(query, "i") },
-      ],
+      _id: { $ne: loggedInUserId },
+      $or: [{ name: regex }, { email: regex }, { phone: regex }],
     })
       .select("_id name email phone friends profilePicture")
+      .limit(20)
       .lean();
 
     const loggedInUser = await User.findById(loggedInUserId).select("friends");
@@ -33,37 +35,35 @@ export const searchUsers = async (req: any, res: Response) => {
     const outgoingIds: string[] = [];
     const requestIdMap = new Map<string, string>();
 
-    pending.forEach((req) => {
-      const fromId = req.from.toString();
-      const toId = req.to.toString();
+    pending.forEach((request) => {
+      const fromId = request.from.toString();
+      const toId = request.to.toString();
 
       if (toId === loggedInUserId) {
         incomingIds.push(fromId);
-        requestIdMap.set(fromId, req._id.toString());
+        requestIdMap.set(fromId, request._id.toString());
       }
 
       if (fromId === loggedInUserId) {
         outgoingIds.push(toId);
-        requestIdMap.set(toId, req._id.toString());
+        requestIdMap.set(toId, request._id.toString());
       }
     });
 
-    const result = users
-      .filter((u) => u._id.toString() !== loggedInUserId)
-      .map((u) => {
-        const id = u._id.toString();
+    const result = users.map((u) => {
+      const id = u._id.toString();
 
-        return {
-          _id: u._id,
-          name: u.name,
-          email: u.email,
-          profilePicture: u.profilePicture,
-          isFriend: friendIds?.includes(id),
-          isIncomingRequest: incomingIds.includes(id),
-          isOutgoingRequest: outgoingIds.includes(id),
-          requestId: requestIdMap.get(id) || null,
-        };
-      });
+      return {
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        profilePicture: u.profilePicture,
+        isFriend: friendIds?.includes(id),
+        isIncomingRequest: incomingIds.includes(id),
+        isOutgoingRequest: outgoingIds.includes(id),
+        requestId: requestIdMap.get(id) || null,
+      };
+    });
 
     return res.json(result);
   } catch (err: any) {
@@ -74,7 +74,7 @@ export const searchUsers = async (req: any, res: Response) => {
 export const getUserProfile = async (req: any, res: Response) => {
   try {
     const loggedInUserId = req.user._id;
-    const paramId = req.params.id;
+    const paramId = req.params.id || "me";
 
     const targetUserId = paramId === "me" ? loggedInUserId : paramId;
     const user = await User.findById(targetUserId)
@@ -207,14 +207,19 @@ export const updateProfilePicture = async (req: any, res: Response) => {
     user.allProfilePictures.push({
       url,
       public_id,
-      uploadAt: new Date()
-    })
+      uploadAt: new Date(),
+    });
 
     await user.save();
 
     return res.json({
       message: "Profile picture updated successfully",
-      user,
+      user: {
+        _id: user._id,
+        name: user.name,
+        profilePicture: user.profilePicture,
+        allProfilePictures: user.allProfilePictures,
+      },
     });
   } catch (err: any) {
     console.error("upload error:", err);
@@ -222,92 +227,102 @@ export const updateProfilePicture = async (req: any, res: Response) => {
   }
 };
 
+export const deleteProfilePicture = async (req: any, res: Response) => {
+  try {
+    const userId = req.user._id;
+    const { public_id } = req.params;
+    const decodedPublicId = decodeURIComponent(public_id);
 
-export const deleteProfilePicture = async (req: any, res: Response) =>{
-   try{
-      const userId = req.user._id;
-      const { public_id } = req.params;
-      const decodedPublicId = decodeURIComponent(public_id);
+    const user = await User.findById(userId);
 
-      const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-      if(!user){
-        return res.status(404).json({message: "User not found"});
-      };
+    const imageExist = user.allProfilePictures.some(
+      (img) => img.public_id === public_id,
+    );
 
-      const imageExist = user.allProfilePictures.some(
-        (img) => img.public_id === public_id
-      );
+    if (!imageExist) {
+      return res.status(404).json({ message: "Image not found" });
+    }
 
-      if(!imageExist){
-        return res.status(404).json({message: "Image not found"});
-      };
+    await cloudinary.uploader.destroy(decodedPublicId);
 
-      await cloudinary.uploader.destroy(decodedPublicId);
+    user.allProfilePictures = user.allProfilePictures.filter(
+      (img) => img.public_id !== decodedPublicId,
+    );
 
-      user.allProfilePictures = user.allProfilePictures.filter(
-        (img) => img.public_id !== decodedPublicId
-      );
+    if (user.profilePicturePublicId === public_id) {
+      const lastImage =
+        user.allProfilePictures[user.allProfilePictures.length - 1];
 
-      if(user.profilePicturePublicId === public_id){
-        const lastImage = user.allProfilePictures[user.allProfilePictures.length - 1];
+      if (lastImage) {
+        user.profilePicture = lastImage.url;
+        user.profilePicturePublicId = lastImage.public_id;
+      } else {
+        user.profilePicture = "";
+        user.profilePicturePublicId = "";
+      }
+    }
 
-        if(lastImage){
-          user.profilePicture = lastImage.url;
-          user.profilePicturePublicId = lastImage.public_id;
-        }else{
-          user.profilePicture = "";
-          user.profilePicturePublicId = "";
-        }
-      };
+    await user.save();
 
-      await user.save();
-
-      return res.json({
-        message: "Profile picture deleted successfully",
-        user
-      })
-   }catch(err: any){
-      console.error("Delete error:", err);
-      return res.status(500).json({message: err.message});
-   }
+    return res.json({
+      message: "Profile picture deleted successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        profilePicture: user.profilePicture,
+        allProfilePictures: user.allProfilePictures,
+      },
+    });
+  } catch (err: any) {
+    console.error("Delete error:", err);
+    return res.status(500).json({ message: err.message });
+  }
 };
 
+export const setActiveProfilePicture = async (req: any, res: Response) => {
+  try {
+    const userId = req.user._id;
+    const { public_id } = req.body;
 
-export const setActiveProfilePicture = async (req: any, res: Response) =>{
-  try{
-     const userId = req.user._id;
-     const {public_id} = req.body;
+    if (!public_id) {
+      return res.status(400).json({ message: "public_id is required" });
+    }
 
-     if(!public_id){
-       return res.status(400).json({message: "public_id is required"})
-     };
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-     const user = await User.findById(userId);
-     if(!user){
-       return res.status(404).json({message: 'User not found'});
-     };
+    const imageExist = user.allProfilePictures.find(
+      (img) => img.public_id === public_id,
+    );
 
-     const imageExist = user.allProfilePictures.find(
-       (img) => img.public_id === public_id
-     );
+    if (!imageExist) {
+      return res
+        .status(404)
+        .json({ message: "Image not found in your gallery" });
+    }
 
-     if(!imageExist){
-      return res.status(404).json({message: 'Image not found in your gallery'});
-     };
+    user.profilePicture = imageExist.url;
+    user.profilePicturePublicId = imageExist.public_id;
 
-     user.profilePicture = imageExist.url;
-     user.profilePicturePublicId = imageExist.public_id;
+    await user.save();
 
-     await user.save();
-
-     return res.json({
-       message: 'Profile picture updated successfully',
-       user
-     })
-  }catch(err: any){
-     console.error('Set active error:', err);
-     return res.status(500).json({message: err.message});
+    return res.json({
+      message: "Profile picture updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        profilePicture: user.profilePicture,
+        allProfilePictures: user.allProfilePictures,
+      },
+    });
+  } catch (err: any) {
+    console.error("Set active error:", err);
+    return res.status(500).json({ message: err.message });
   }
-}
-
+};
