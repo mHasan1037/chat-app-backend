@@ -20,6 +20,7 @@ router.patch(
   protectedRoute,
   updateProfilePicture,
 );
+router.get("/me", protectedRoute, getUserProfile);
 router.get("/:id", protectedRoute, getUserProfile);
 router.delete('/profile-picture/:public_id', protectedRoute, deleteProfilePicture);
 router.patch('/set-active-profile-picture', protectedRoute, setActiveProfilePicture)

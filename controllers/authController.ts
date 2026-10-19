@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import User from "../models/User";
 import generateToken from "../utils/generateToken";
 import transporter from "../config/emailConfig";
+import { cookieOptions } from "../utils/cookieOptions";
+
+const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
@@ -26,11 +29,15 @@ export const registerUser = async (req: Request, res: Response) => {
       password: hashPassword,
     });
 
+    res.cookie("token", generateToken(user._id.toString()), {
+      ...cookieOptions,
+      maxAge: SEVEN_DAYS,
+    });
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token: generateToken(user._id.toString()),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -51,11 +58,15 @@ export const loginUser = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    res.cookie("token", generateToken(user._id.toString()), {
+      ...cookieOptions,
+      maxAge: SEVEN_DAYS,
+    });
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token: generateToken(user._id.toString()),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -145,4 +156,11 @@ export const resetPassword = async (req: Request, res: Response) => {
       message: "Unable to reset password. Please try again later",
     });
   }
+};
+
+
+
+export const logoutUser = (req: Request, res: Response) => {
+  res.clearCookie("token", cookieOptions);
+  res.status(200).json({ message: "Logged out" });
 };

@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from "cookie-parser";
 import cors from 'cors';
 import connectDB from './config/db';
 
@@ -18,13 +19,16 @@ import aiRoute from './routes/aiRoutes';
 
 const app = express();
 
+
+app.set("trust proxy", 1);
 app.use(cors({
   origin: process.env.FRONTEND_URL,
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type'],
 }));
 
-
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
