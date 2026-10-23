@@ -1,24 +1,27 @@
 # 🛠️ Chat App Backend
 
-A robust RESTful API and real-time WebSocket server for the Chat App, built with **Node.js**, **Express**, **TypeScript**, **MongoDB**, and **Socket.IO**. Includes authentication, friend requests, messaging, posts, likes, comments, image uploads, and an AI chat route.
+A robust RESTful API and real-time WebSocket server for the Chat App, built with **Node.js**, **Express**, **TypeScript**, **MongoDB**, and **Socket.IO**. Includes authentication, friend requests, messaging, posts, likes, comments, image uploads, and a rate-limited AI chat route backed by **Redis**.
 
-🔗 **Frontend:** [chat-app-frontend-eight-woad.vercel.app](https://chat-app-frontend-eight-woad.vercel.app)
+🔗 **Frontend:** [chat-app-frontend-eight-woad.vercel.app](https://chat-app-frontend-eight-woad.vercel.app) ([repo](https://github.com/mHasan1037/chat-app-frontend))
 
 ---
 
 ## 🚀 Tech Stack
 
-| Category | Technology |
-|---|---|
-| Runtime | Node.js |
-| Framework | Express v5 |
-| Language | TypeScript |
-| Database | MongoDB + Mongoose |
-| Real-time | Socket.IO |
-| Authentication | JSON Web Tokens (JWT) + bcryptjs |
-| Image Uploads | Cloudinary + Multer + Streamifier |
-| Email | Nodemailer |
-| Dev Tools | ts-node-dev, Nodemon |
+| Category       | Technology                        |
+|----------------|-----------------------------------|
+| Runtime        | Node.js                           |
+| Framework      | Express                           |
+| Language       | TypeScript                        |
+| Database       | MongoDB + Mongoose                |
+| Cache / Store  | Redis (via ioredis)               |
+| Rate Limiting  | express-rate-limit + rate-limit-redis |
+| Real-time      | Socket.IO                         |
+| Authentication | JSON Web Tokens (JWT) + bcryptjs  |
+| Cookies        | cookie-parser                     |
+| Image Uploads  | Cloudinary + Multer + Streamifier |
+| Email          | Nodemailer                        |
+| Dev Tools      | ts-node-dev, Nodemon              |
 
 ---
 
@@ -33,8 +36,27 @@ A robust RESTful API and real-time WebSocket server for the Chat App, built with
 - **Image uploads** to Cloudinary via Multer (streamed, no disk storage)
 - **Email support** via Nodemailer (e.g. verification, notifications)
 - **AI route** — dedicated endpoint for AI-powered chat features
+- **Redis-backed rate limiting** on the AI route to prevent abuse
 - **CORS configured** for frontend integration
 - **Fully typed** with TypeScript
+
+---
+
+## 🛡️ Rate Limiting (Redis)
+
+The AI chat endpoint (`/api/ai`) is rate limited so it can't be spammed or abused.
+
+- **Library:** [`express-rate-limit`](https://www.npmjs.com/package/express-rate-limit) with [`rate-limit-redis`](https://www.npmjs.com/package/rate-limit-redis) as the store and [`ioredis`](https://www.npmjs.com/package/ioredis) as the Redis client.
+- **Why Redis:** request counts live in Redis instead of server memory, so limits survive server restarts and stay consistent if the backend runs on more than one instance.
+- **Client identification:** Express is configured with `trust proxy`, so the limiter sees each client's real IP when the app runs behind a proxy (e.g. Render).
+- **When the limit is exceeded:** the API rejects the request with a rate-limit response (HTTP `429 Too Many Requests`), which the frontend catches and shows to the user.
+
+```
+Client ──► /api/ai ──► rate limiter ──► Redis (check / increment count)
+                            │
+                  under limit ──► AI controller
+                  over limit  ──► 429 Too Many Requests
+```
 
 ---
 
@@ -45,7 +67,7 @@ chat-app-backend/
 ├── config/
 │   └── db.ts              # MongoDB connection
 ├── controllers/           # Route handler logic
-├── middleware/            # Auth and other middleware
+├── middleware/            # Auth, rate limiting, and other middleware
 ├── models/                # Mongoose schemas & models
 ├── routes/                # Express route definitions
 │   ├── authRoutes.ts
@@ -67,17 +89,17 @@ chat-app-backend/
 
 ## 📡 API Endpoints
 
-| Prefix | Description |
-|---|---|
-| `/api/auth` | Register, login, logout |
-| `/api/users` | User profile management |
-| `/api/friends` | Friend requests & relationships |
-| `/api/chats` | Chat rooms / conversations |
-| `/api/messages` | Messages within chats |
-| `/api/posts` | Social feed posts |
-| `/api/likes` | Like/unlike posts |
-| `/api/comments` | Comments on posts |
-| `/api/ai` | AI-powered chat features |
+| Prefix          | Description                                |
+|-----------------|--------------------------------------------|
+| `/api/auth`     | Register, login, logout                    |
+| `/api/users`    | User profile management                    |
+| `/api/friends`  | Friend requests & relationships            |
+| `/api/chats`    | Chat rooms / conversations                 |
+| `/api/messages` | Messages within chats                      |
+| `/api/posts`    | Social feed posts                          |
+| `/api/likes`    | Like/unlike posts                          |
+| `/api/comments` | Comments on posts                          |
+| `/api/ai`       | AI-powered chat features (rate limited)    |
 
 ---
 
@@ -87,6 +109,7 @@ chat-app-backend/
 
 - Node.js 18+
 - MongoDB instance (local or MongoDB Atlas)
+- Redis instance (local or hosted)
 - Cloudinary account
 
 ### Installation
@@ -101,11 +124,13 @@ npm install
 
 Create a `.env` file in the root directory:
 
-```env
+```
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 FRONTEND_URL=http://localhost:3000
+
+REDIS_URL=your_redis_connection_url
 
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
@@ -127,11 +152,11 @@ The server will start with hot-reloading via `ts-node-dev`.
 
 ## 📦 Available Scripts
 
-| Script | Description |
-|---|---|
-| `npm run dev` | Start dev server with hot reload |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm run start` | Run compiled production build |
+| Script          | Description                      |
+|-----------------|----------------------------------|
+| `npm run dev`   | Start dev server with hot reload |
+| `npm run build` | Compile TypeScript to `dist/`    |
+| `npm run start` | Run compiled production build    |
 
 ---
 
@@ -149,8 +174,9 @@ The server uses Socket.IO alongside the HTTP server for real-time features. Comm
 
 1. Run `npm run build` to compile TypeScript.
 2. Deploy the `dist/` folder to your hosting provider (e.g. Railway, Render, or a VPS).
-3. Set all required environment variables on the platform.
-4. Start the server with `npm run start`.
+3. Provision a Redis instance and make it reachable from the server.
+4. Set all required environment variables on the platform.
+5. Start the server with `npm run start`.
 
 ---
 
